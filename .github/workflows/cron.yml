@@ -1,0 +1,39 @@
+name: Issue Reaction Counter
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v2
+        with:
+          script: |
+            (async () => {
+              const repo = await github.request('GET /repos/{owner}/{repo}/issues', {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page:100,
+                state:"open"
+              })
+              for (const issue of repo.data) {
+                const count = issue.reactions['+1'] ? issue.reactions['+1'] : 0
+                if (count >= 10 && !issue.labels.find((label) => {return typeof label != 'string' && label.name == 'ready'})) {
+                  await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels', {
+                    owner:context.repo.owner,
+                    repo:context.repo.repo,
+                    issue_number: issue.number,
+                    labels: ['ready']
+                  })
+                  await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+                    owner:context.repo.owner,
+                    repo:context.repo.repo,
+                    issue_number: issue.number,
+                    body: ":tada: :tada: :tada: Congratulation! たくさんのリアクションが集まりました！さあ！イベントを行いましょう！ :rocket: :rocket: :rocket:"
+                  })
+                }
+              }
+            })()
+
+
+
